@@ -55,174 +55,6 @@ const getStarsForScore = (score: number, target: number) => {
   return 0;
 };
 
-// ─── Certificate Print ──────────────────────────────────
-
-const CERTIFICATE_LOGO = "certificates/mental-math-journey-icon.png";
-
-interface CertificateTheme {
-  background: string;
-  ink: string;
-  accent: string;
-  medallionTopMm: number;
-  medallionSizeMm: number;
-  dateBottomMm: number;
-  dateWidthMm: number;
-}
-
-interface CertificateRequest {
-  stageId: StageId;
-  stageName: string;
-  earnedStars: number;
-  maxStars: number;
-}
-
-const CERTIFICATE_THEMES: { [key: number]: CertificateTheme } = {
-  [StageId.StarterIsland]: {
-    background: "certificates/starter-island.png",
-    ink: "#173a78",
-    accent: "#d97706",
-    medallionTopMm: 6.6,
-    medallionSizeMm: 36.4,
-    dateBottomMm: 14.7,
-    dateWidthMm: 90,
-  },
-  [StageId.DoublesForest]: {
-    background: "certificates/doubles-forest.png",
-    ink: "#34511b",
-    accent: "#b37b0f",
-    medallionTopMm: 6.6,
-    medallionSizeMm: 36.4,
-    dateBottomMm: 14.7,
-    dateWidthMm: 90,
-  },
-  [StageId.BridgeTown]: {
-    background: "certificates/bridge-town.png",
-    ink: "#174387",
-    accent: "#c47b12",
-    medallionTopMm: 6.6,
-    medallionSizeMm: 36.4,
-    dateBottomMm: 14.7,
-    dateWidthMm: 90,
-  },
-  [StageId.FamilyVillage]: {
-    background: "certificates/family-village.png",
-    ink: "#5b2f7f",
-    accent: "#d97706",
-    medallionTopMm: 6.6,
-    medallionSizeMm: 36.4,
-    dateBottomMm: 14.7,
-    dateWidthMm: 90,
-  },
-  [StageId.BigNumberMountain]: {
-    background: "certificates/big-number-mountain.png",
-    ink: "#7b2f54",
-    accent: "#c47b12",
-    medallionTopMm: 6.6,
-    medallionSizeMm: 36.4,
-    dateBottomMm: 14.7,
-    dateWidthMm: 90,
-  },
-  [StageId.TheSummit]: {
-    background: "certificates/the-summit.png",
-    ink: "#173a78",
-    accent: "#b37b0f",
-    medallionTopMm: 6.6,
-    medallionSizeMm: 36.4,
-    dateBottomMm: 14.7,
-    dateWidthMm: 90,
-  },
-};
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function getAbsoluteCertificateAssetUrl(path: string): string {
-  return new URL(path, new URL("./", window.location.href)).href;
-}
-
-function getCertificateMaxStars(stageNum: number): number {
-  return STRATEGIES.filter((strategy) => strategy.stageId === stageNum).length * STARS_PER_STRATEGY;
-}
-
-function normalizeCertificateStars(earnedStars: number, maxStars: number): { earnedStars: number; maxStars: number } {
-  const normalizedMax = Math.max(0, Math.round(maxStars));
-  const normalizedEarned = Math.min(normalizedMax, Math.max(0, Math.round(earnedStars)));
-  return { earnedStars: normalizedEarned, maxStars: normalizedMax };
-}
-
-function formatCertificateStars(earnedStars: number, maxStars: number): string {
-  const label = maxStars === 1 ? "Star" : "Stars";
-  return `${earnedStars} of ${maxStars} ${label} Earned`;
-}
-
-function printCertificate(
-  stageNum: number, stageName: string,
-  earnedStars: number, maxStars: number, userName: string,
-) {
-  const w = window.open("", "_blank");
-  if (!w) { alert("Please allow popups to print!"); return; }
-
-  const theme = CERTIFICATE_THEMES[stageNum] || CERTIFICATE_THEMES[StageId.StarterIsland];
-  const trimmedName = userName.trim();
-  if (!trimmedName) { alert("Please enter a name for the certificate."); return; }
-  const fallbackMaxStars = getCertificateMaxStars(stageNum);
-  const certificateStars = normalizeCertificateStars(earnedStars, maxStars || fallbackMaxStars);
-  const safeName = escapeHtml(trimmedName);
-  const safeChapter = escapeHtml(`Chapter ${stageNum}: ${stageName}`);
-  const safeDate = escapeHtml(new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }));
-  const safeBackgroundUrl = escapeHtml(getAbsoluteCertificateAssetUrl(theme.background));
-  const safeLogoUrl = escapeHtml(getAbsoluteCertificateAssetUrl(CERTIFICATE_LOGO));
-  const safeStarsText = escapeHtml(formatCertificateStars(certificateStars.earnedStars, certificateStars.maxStars));
-  const nameClass = safeName.length > 20 ? " xsmall" : safeName.length > 14 ? " small" : "";
-
-  w.document.write(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Certificate</title><style>
-    @page{size:A4 landscape;margin:0}
-    *{box-sizing:border-box}
-    html,body{width:100%;min-height:100%;margin:0;background:#eef2ff;font-family:Arial,Helvetica,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    body{display:flex;align-items:center;justify-content:center;padding:16px}
-    .certificate-page{position:relative;width:297mm;height:210mm;overflow:hidden;background:#fff;box-shadow:0 18px 48px rgba(15,23,42,.18)}
-    .certificate-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-    .overlay{position:absolute;left:50%;transform:translateX(-50%);text-align:center;color:${theme.ink};text-shadow:0 2px 8px rgba(255,255,255,.64),0 1px 1px rgba(255,255,255,.8)}
-    .top-brand{top:3.2mm;width:178mm;padding:1.5mm 8mm;border-radius:999mm;background:linear-gradient(90deg,rgba(12,34,80,.03),rgba(12,34,80,.84),rgba(12,34,80,.03));font-size:4.45mm;font-weight:900;letter-spacing:.24em;text-transform:uppercase;color:#fff5cf;text-shadow:0 1px 0 #68460b,0 3px 10px rgba(0,0,0,.58);z-index:4}
-    .medallion-logo-frame{top:${theme.medallionTopMm}mm;width:${theme.medallionSizeMm}mm;height:${theme.medallionSizeMm}mm;border-radius:50%;display:flex;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(circle at 50% 42%,#fffdf2 0%,#fff1b5 62%,#f3c853 100%);box-shadow:inset 0 0 0 .65mm rgba(255,255,255,.86),inset 0 0 0 1.45mm rgba(183,110,16,.9),0 1.2mm 4mm rgba(80,46,10,.26);z-index:3}
-    .medallion-logo-frame img{width:100%;height:100%;object-fit:contain;object-position:center center;display:block}
-    .chapter-title{top:52mm;width:174mm;padding:2.1mm 8mm;border-radius:999mm;font-family:Georgia,'Times New Roman',serif;font-size:8.6mm;font-weight:900;line-height:1.1;color:#fff;background:linear-gradient(90deg,rgba(9,30,76,0),rgba(9,30,76,.88),rgba(9,30,76,0));text-shadow:0 2px 8px rgba(0,0,0,.52),0 1px 0 rgba(0,0,0,.42);z-index:2}
-    .awarded-to{top:74mm;font-size:5.9mm;font-weight:800;color:${theme.ink}}
-    .student-name{top:83mm;width:215mm;font-family:Georgia,'Times New Roman',serif;font-size:21mm;font-weight:900;line-height:1;color:${theme.ink};text-shadow:0 2px 0 #fff,0 5px 12px rgba(15,23,42,.2)}
-    .student-name.small{font-size:17mm}.student-name.xsmall{font-size:14mm}
-    .stars-earned{top:108mm;font-size:7.2mm;font-weight:900;color:${theme.accent};text-shadow:0 2px 6px rgba(255,255,255,.7)}
-    .date-field{bottom:${theme.dateBottomMm}mm;width:${theme.dateWidthMm}mm;height:10mm;display:flex;align-items:center;justify-content:center;font-family:Georgia,'Times New Roman',serif;font-size:5.7mm;font-weight:900;color:${theme.ink};text-shadow:0 1px 0 #fff,0 2px 7px rgba(255,255,255,.72)}
-    @media print{html,body{width:297mm;height:210mm;background:#fff;padding:0}.certificate-page{width:297mm;height:210mm;box-shadow:none}}
-  </style></head><body><div class="certificate-page">
-    <img class="certificate-bg" src="${safeBackgroundUrl}" alt="">
-    <div class="overlay top-brand">MENTAL MATH JOURNEY</div>
-    <div class="overlay medallion-logo-frame" aria-hidden="true"><img src="${safeLogoUrl}" alt=""></div>
-    <div class="overlay chapter-title">${safeChapter}</div>
-    <div class="overlay awarded-to">Awarded to</div>
-    <div class="overlay student-name${nameClass}">${safeName}</div>
-    <div class="overlay stars-earned">${safeStarsText}</div>
-    <div class="overlay date-field">${safeDate}</div>
-  </div><script>
-    (function(){
-      function printReady(){ setTimeout(function(){ window.focus(); window.print(); }, 350); }
-      var imgs = Array.prototype.slice.call(document.images || []);
-      var imagePromise = Promise.all(imgs.map(function(img){
-        if (img.complete) return Promise.resolve();
-        return new Promise(function(resolve){ img.onload = resolve; img.onerror = resolve; });
-      }));
-      var fontPromise = document.fonts && document.fonts.ready ? document.fonts.ready.catch(function(){}) : Promise.resolve();
-      Promise.all([imagePromise, fontPromise]).then(printReady).catch(printReady);
-    }());
-  </script></body></html>`);
-  w.document.close();
-}
-
 // ─── App ────────────────────────────────────────────────
 
 export default function App() {
@@ -303,9 +135,6 @@ export default function App() {
   const [isShaking, setIsShaking] = useState<boolean>(false);
   const [showLessonModal, setShowLessonModal] = useState<Strategy | null>(null);
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
-  const [showCertificateModal, setShowCertificateModal] = useState<boolean>(false);
-  const [certificateNameInput, setCertificateNameInput] = useState<string>("");
-  const [certificateRequest, setCertificateRequest] = useState<CertificateRequest | null>(null);
   const [showAllDone, setShowAllDone] = useState<boolean>(false);
 
   const isTimedQuizInProgress = !!activeStrategyRound && !roundCompleted && (isRoundActive || countdownValue !== null);
@@ -320,10 +149,6 @@ export default function App() {
   const chapterProgress = `${activeStrategies.filter((s) => masteredStrategyIds.includes(s.id)).length}/${activeStrategies.length}`;
 
   const getStrategyStarCount = (id: number) => clampStars(strategyStars[id] || 0);
-  const getStageEarnedStars = (stageId: StageId): number =>
-    STRATEGIES.filter((s) => s.stageId === stageId).reduce((total, strategy) => total + getStrategyStarCount(strategy.id), 0);
-  const getStageMaxStars = (stageId: StageId): number =>
-    STRATEGIES.filter((s) => s.stageId === stageId).length * STARS_PER_STRATEGY;
   const isStageUnlocked = (stageId: StageId): boolean => {
     if (stageId === StageId.StarterIsland) return true;
     const prev = STAGES.find((s) => s.id === stageId - 1);
@@ -331,32 +156,6 @@ export default function App() {
     return STRATEGIES.filter((s) => s.stageId === prev.id).every((s) => masteredStrategyIds.includes(s.id));
   };
 
-  const openCertificateModal = (stageId: StageId, stageName: string) => {
-    const certificateStars = normalizeCertificateStars(getStageEarnedStars(stageId), getStageMaxStars(stageId));
-    setCertificateRequest({
-      stageId,
-      stageName,
-      earnedStars: certificateStars.earnedStars,
-      maxStars: certificateStars.maxStars,
-    });
-    setCertificateNameInput("");
-    setShowCertificateModal(true);
-  };
-
-  const handlePrintCertificateFromModal = () => {
-    if (!certificateRequest) return;
-    const trimmedName = certificateNameInput.trim();
-    if (!trimmedName) return;
-    printCertificate(
-      certificateRequest.stageId,
-      certificateRequest.stageName,
-      certificateRequest.earnedStars,
-      certificateRequest.maxStars,
-      trimmedName,
-    );
-    setShowCertificateModal(false);
-    setCertificateNameInput("");
-  };
 
   // ─── LocalStorage ─────────────────────────────────────
 
@@ -1280,19 +1079,12 @@ export default function App() {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-center gap-4 pt-4 pb-8 text-xs">
+          <div className="flex items-center justify-center pt-4 pb-8 text-xs">
             <button
               onClick={() => setShowSettingsModal(true)}
               className="text-slate-500 hover:text-slate-700 font-bold cursor-pointer"
             >
               Settings
-            </button>
-            <span className="text-slate-300">|</span>
-            <button
-              onClick={() => openCertificateModal(activeStage.id, activeStage.name)}
-              className="text-slate-500 hover:text-slate-700 font-bold cursor-pointer"
-            >
-              Print Certificate
             </button>
           </div>
         </main>
@@ -1596,73 +1388,6 @@ export default function App() {
         )}
       </AnimatePresence>
 
-
-      {/* Certificate Modal */}
-      <AnimatePresence>
-        {showCertificateModal && certificateRequest && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
-            onClick={() => setShowCertificateModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 10 }}
-              className="bg-white rounded-3xl border-4 border-amber-300 p-6 max-w-sm w-full shadow-xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-5">
-                <div>
-                  <h3 className="text-lg font-display font-black text-blue-950">Create Certificate</h3>
-                  <p className="text-xs font-bold text-slate-500 mt-0.5">Chapter {certificateRequest.stageId}: {certificateRequest.stageName}</p>
-                </div>
-                <button onClick={() => setShowCertificateModal(false)} className="p-1.5 rounded-full hover:bg-slate-100 cursor-pointer transition">
-                  <X className="w-5 h-5 text-slate-400" />
-                </button>
-              </div>
-
-              <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-3 mb-4 text-center">
-                <p className="text-sm font-black text-amber-700">
-                  {formatCertificateStars(certificateRequest.earnedStars, certificateRequest.maxStars)}
-                </p>
-              </div>
-
-              <label className="text-xs font-black text-slate-500 uppercase tracking-wider block mb-1">Enter your name</label>
-              <input
-                type="text"
-                value={certificateNameInput}
-                placeholder="Student name"
-                maxLength={32}
-                autoFocus
-                onChange={(e) => setCertificateNameInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && certificateNameInput.trim()) handlePrintCertificateFromModal();
-                }}
-                className="w-full px-3 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-base font-bold focus:outline-none focus:border-amber-300"
-              />
-
-              <div className="flex gap-2 mt-5">
-                <button
-                  onClick={() => setShowCertificateModal(false)}
-                  className="flex-1 bg-white hover:bg-slate-50 text-slate-600 font-bold py-2.5 rounded-xl text-sm transition border-2 border-slate-200 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handlePrintCertificateFromModal}
-                  disabled={!certificateNameInput.trim()}
-                  className={`flex-1 font-black py-2.5 rounded-xl text-sm transition border-2 ${
-                    certificateNameInput.trim()
-                      ? "bg-amber-400 hover:bg-amber-500 border-amber-500 text-blue-950 cursor-pointer shadow-sm"
-                      : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
-                  }`}
-                >
-                  Print
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Settings Modal */}
       <AnimatePresence>

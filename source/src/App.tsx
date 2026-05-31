@@ -57,13 +57,23 @@ const getStarsForScore = (score: number, target: number) => {
 
 // ─── Certificate Print ──────────────────────────────────
 
-const CERTIFICATE_STAR_SLOTS = 6;
+const CERTIFICATE_LOGO = "certificates/mental-math-journey-icon.png";
 
 interface CertificateTheme {
   background: string;
   ink: string;
   accent: string;
   medallionTopMm: number;
+  medallionSizeMm: number;
+  dateBottomMm: number;
+  dateWidthMm: number;
+}
+
+interface CertificateRequest {
+  stageId: StageId;
+  stageName: string;
+  earnedStars: number;
+  maxStars: number;
 }
 
 const CERTIFICATE_THEMES: { [key: number]: CertificateTheme } = {
@@ -71,37 +81,55 @@ const CERTIFICATE_THEMES: { [key: number]: CertificateTheme } = {
     background: "certificates/starter-island.png",
     ink: "#173a78",
     accent: "#d97706",
-    medallionTopMm: 8.7,
+    medallionTopMm: 6.6,
+    medallionSizeMm: 36.4,
+    dateBottomMm: 14.7,
+    dateWidthMm: 90,
   },
   [StageId.DoublesForest]: {
     background: "certificates/doubles-forest.png",
     ink: "#34511b",
     accent: "#b37b0f",
-    medallionTopMm: 8.7,
+    medallionTopMm: 6.6,
+    medallionSizeMm: 36.4,
+    dateBottomMm: 14.7,
+    dateWidthMm: 90,
   },
   [StageId.BridgeTown]: {
     background: "certificates/bridge-town.png",
     ink: "#174387",
     accent: "#c47b12",
-    medallionTopMm: 8.7,
+    medallionTopMm: 6.6,
+    medallionSizeMm: 36.4,
+    dateBottomMm: 14.7,
+    dateWidthMm: 90,
   },
   [StageId.FamilyVillage]: {
     background: "certificates/family-village.png",
     ink: "#5b2f7f",
     accent: "#d97706",
-    medallionTopMm: 8.7,
+    medallionTopMm: 6.6,
+    medallionSizeMm: 36.4,
+    dateBottomMm: 14.7,
+    dateWidthMm: 90,
   },
   [StageId.BigNumberMountain]: {
     background: "certificates/big-number-mountain.png",
     ink: "#7b2f54",
     accent: "#c47b12",
-    medallionTopMm: 8.7,
+    medallionTopMm: 6.6,
+    medallionSizeMm: 36.4,
+    dateBottomMm: 14.7,
+    dateWidthMm: 90,
   },
   [StageId.TheSummit]: {
     background: "certificates/the-summit.png",
     ink: "#173a78",
     accent: "#b37b0f",
-    medallionTopMm: 8.7,
+    medallionTopMm: 6.6,
+    medallionSizeMm: 36.4,
+    dateBottomMm: 14.7,
+    dateWidthMm: 90,
   },
 };
 
@@ -118,21 +146,24 @@ function getAbsoluteCertificateAssetUrl(path: string): string {
   return new URL(path, new URL("./", window.location.href)).href;
 }
 
-function getFilledCertificateStarSlots(starsCount: number): number {
-  if (starsCount <= 0) return 0;
-  return Math.min(CERTIFICATE_STAR_SLOTS, Math.max(0, Math.round(starsCount)));
+function getCertificateMaxStars(stageNum: number): number {
+  return STRATEGIES.filter((strategy) => strategy.stageId === stageNum).length * STARS_PER_STRATEGY;
 }
 
-function makeCertificateStarRow(starsCount: number): string {
-  const filledSlots = getFilledCertificateStarSlots(starsCount);
-  return Array.from({ length: CERTIFICATE_STAR_SLOTS }, (_, i) => (
-    `<span class="star ${i < filledSlots ? "filled" : "empty"}">&#9733;</span>`
-  )).join("");
+function normalizeCertificateStars(earnedStars: number, maxStars: number): { earnedStars: number; maxStars: number } {
+  const normalizedMax = Math.max(0, Math.round(maxStars));
+  const normalizedEarned = Math.min(normalizedMax, Math.max(0, Math.round(earnedStars)));
+  return { earnedStars: normalizedEarned, maxStars: normalizedMax };
+}
+
+function formatCertificateStars(earnedStars: number, maxStars: number): string {
+  const label = maxStars === 1 ? "Star" : "Stars";
+  return `${earnedStars} of ${maxStars} ${label} Earned`;
 }
 
 function printCertificate(
   stageNum: number, stageName: string,
-  starsCount: number, userName: string,
+  earnedStars: number, maxStars: number, userName: string,
 ) {
   const w = window.open("", "_blank");
   if (!w) { alert("Please allow popups to print!"); return; }
@@ -140,14 +171,14 @@ function printCertificate(
   const theme = CERTIFICATE_THEMES[stageNum] || CERTIFICATE_THEMES[StageId.StarterIsland];
   const trimmedName = userName.trim();
   if (!trimmedName) { alert("Please enter a name for the certificate."); return; }
-  const stage = STAGES.find((s) => s.id === stageNum);
+  const fallbackMaxStars = getCertificateMaxStars(stageNum);
+  const certificateStars = normalizeCertificateStars(earnedStars, maxStars || fallbackMaxStars);
   const safeName = escapeHtml(trimmedName);
   const safeChapter = escapeHtml(`Chapter ${stageNum}: ${stageName}`);
-  const safeIcon = escapeHtml(stage?.emoji || "⭐");
   const safeDate = escapeHtml(new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }));
   const safeBackgroundUrl = escapeHtml(getAbsoluteCertificateAssetUrl(theme.background));
-  const safeStarsText = escapeHtml(`${starsCount} Star${starsCount === 1 ? "" : "s"} Earned`);
-  const starRow = makeCertificateStarRow(starsCount);
+  const safeLogoUrl = escapeHtml(getAbsoluteCertificateAssetUrl(CERTIFICATE_LOGO));
+  const safeStarsText = escapeHtml(formatCertificateStars(certificateStars.earnedStars, certificateStars.maxStars));
   const nameClass = safeName.length > 20 ? " xsmall" : safeName.length > 14 ? " small" : "";
 
   w.document.write(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Certificate</title><style>
@@ -159,25 +190,23 @@ function printCertificate(
     .certificate-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
     .overlay{position:absolute;left:50%;transform:translateX(-50%);text-align:center;color:${theme.ink};text-shadow:0 2px 8px rgba(255,255,255,.64),0 1px 1px rgba(255,255,255,.8)}
     .top-brand{top:3.2mm;width:178mm;padding:1.5mm 8mm;border-radius:999mm;background:linear-gradient(90deg,rgba(12,34,80,.03),rgba(12,34,80,.84),rgba(12,34,80,.03));font-size:4.45mm;font-weight:900;letter-spacing:.24em;text-transform:uppercase;color:#fff5cf;text-shadow:0 1px 0 #68460b,0 3px 10px rgba(0,0,0,.58);z-index:4}
-    .chapter-medallion-icon{top:${theme.medallionTopMm + 3.15}mm;width:21.2mm;height:21.2mm;border-radius:50%;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 40%,#fffdfa 0%,#fff7df 68%,#f7efc7 100%);box-shadow:inset 0 0 0 .35mm rgba(255,255,255,.9);font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;font-size:12.4mm;line-height:1;z-index:3}
+    .medallion-logo-frame{top:${theme.medallionTopMm}mm;width:${theme.medallionSizeMm}mm;height:${theme.medallionSizeMm}mm;border-radius:50%;display:flex;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(circle at 50% 42%,#fffdf2 0%,#fff1b5 62%,#f3c853 100%);box-shadow:inset 0 0 0 .65mm rgba(255,255,255,.86),inset 0 0 0 1.45mm rgba(183,110,16,.9),0 1.2mm 4mm rgba(80,46,10,.26);z-index:3}
+    .medallion-logo-frame img{width:100%;height:100%;object-fit:contain;object-position:center center;display:block}
     .chapter-title{top:52mm;width:174mm;padding:2.1mm 8mm;border-radius:999mm;font-family:Georgia,'Times New Roman',serif;font-size:8.6mm;font-weight:900;line-height:1.1;color:#fff;background:linear-gradient(90deg,rgba(9,30,76,0),rgba(9,30,76,.88),rgba(9,30,76,0));text-shadow:0 2px 8px rgba(0,0,0,.52),0 1px 0 rgba(0,0,0,.42);z-index:2}
     .awarded-to{top:74mm;font-size:5.9mm;font-weight:800;color:${theme.ink}}
     .student-name{top:83mm;width:215mm;font-family:Georgia,'Times New Roman',serif;font-size:21mm;font-weight:900;line-height:1;color:${theme.ink};text-shadow:0 2px 0 #fff,0 5px 12px rgba(15,23,42,.2)}
     .student-name.small{font-size:17mm}.student-name.xsmall{font-size:14mm}
     .stars-earned{top:108mm;font-size:7.2mm;font-weight:900;color:${theme.accent};text-shadow:0 2px 6px rgba(255,255,255,.7)}
-    .star-row{top:119mm;display:flex;justify-content:center;gap:3.7mm;font-size:10.5mm;line-height:1}
-    .star{color:rgba(255,255,255,.55);text-shadow:0 2px 6px rgba(0,0,0,.2)}.star.filled{color:#f4c533}.star.empty{color:rgba(255,255,255,.55)}
-    .date-field{bottom:14.7mm;width:86mm;height:10mm;display:flex;align-items:center;justify-content:center;font-family:Georgia,'Times New Roman',serif;font-size:5.7mm;font-weight:900;color:${theme.ink};text-shadow:0 1px 0 #fff,0 2px 7px rgba(255,255,255,.72)}
+    .date-field{bottom:${theme.dateBottomMm}mm;width:${theme.dateWidthMm}mm;height:10mm;display:flex;align-items:center;justify-content:center;font-family:Georgia,'Times New Roman',serif;font-size:5.7mm;font-weight:900;color:${theme.ink};text-shadow:0 1px 0 #fff,0 2px 7px rgba(255,255,255,.72)}
     @media print{html,body{width:297mm;height:210mm;background:#fff;padding:0}.certificate-page{width:297mm;height:210mm;box-shadow:none}}
   </style></head><body><div class="certificate-page">
     <img class="certificate-bg" src="${safeBackgroundUrl}" alt="">
     <div class="overlay top-brand">MENTAL MATH JOURNEY</div>
-    <div class="overlay chapter-medallion-icon" aria-hidden="true">${safeIcon}</div>
+    <div class="overlay medallion-logo-frame" aria-hidden="true"><img src="${safeLogoUrl}" alt=""></div>
     <div class="overlay chapter-title">${safeChapter}</div>
     <div class="overlay awarded-to">Awarded to</div>
     <div class="overlay student-name${nameClass}">${safeName}</div>
     <div class="overlay stars-earned">${safeStarsText}</div>
-    <div class="overlay star-row" aria-hidden="true">${starRow}</div>
     <div class="overlay date-field">${safeDate}</div>
   </div><script>
     (function(){
@@ -276,7 +305,7 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
   const [showCertificateModal, setShowCertificateModal] = useState<boolean>(false);
   const [certificateNameInput, setCertificateNameInput] = useState<string>("");
-  const [certificateRequest, setCertificateRequest] = useState<{ stageId: number; stageName: string; starsCount: number } | null>(null);
+  const [certificateRequest, setCertificateRequest] = useState<CertificateRequest | null>(null);
   const [showAllDone, setShowAllDone] = useState<boolean>(false);
 
   const isTimedQuizInProgress = !!activeStrategyRound && !roundCompleted && (isRoundActive || countdownValue !== null);
@@ -303,10 +332,12 @@ export default function App() {
   };
 
   const openCertificateModal = (stageId: StageId, stageName: string) => {
+    const certificateStars = normalizeCertificateStars(getStageEarnedStars(stageId), getStageMaxStars(stageId));
     setCertificateRequest({
       stageId,
       stageName,
-      starsCount: getStageEarnedStars(stageId),
+      earnedStars: certificateStars.earnedStars,
+      maxStars: certificateStars.maxStars,
     });
     setCertificateNameInput("");
     setShowCertificateModal(true);
@@ -319,7 +350,8 @@ export default function App() {
     printCertificate(
       certificateRequest.stageId,
       certificateRequest.stageName,
-      certificateRequest.starsCount,
+      certificateRequest.earnedStars,
+      certificateRequest.maxStars,
       trimmedName,
     );
     setShowCertificateModal(false);
@@ -1589,11 +1621,8 @@ export default function App() {
               </div>
 
               <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-3 mb-4 text-center">
-                <div className="flex items-center justify-center gap-1.5 mb-1">
-                  {renderStars(Math.min(CERTIFICATE_STAR_SLOTS, certificateRequest.starsCount), "w-4 h-4", CERTIFICATE_STAR_SLOTS)}
-                </div>
                 <p className="text-sm font-black text-amber-700">
-                  {certificateRequest.starsCount} Star{certificateRequest.starsCount === 1 ? "" : "s"} Earned
+                  {formatCertificateStars(certificateRequest.earnedStars, certificateRequest.maxStars)}
                 </p>
               </div>
 

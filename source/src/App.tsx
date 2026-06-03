@@ -39,6 +39,8 @@ interface ConfettiPiece {
 const STARS_PER_STRATEGY = 3;
 const CORRECT_ANSWER_HOLD_MS = 275;
 const REVEALED_ANSWER_HOLD_MS = 225;
+const INCORRECT_ANSWER_DISPLAY_MS = 220;
+const INCORRECT_FEEDBACK_MS = 400;
 const QUESTION_REVEAL_GRACE = 3.75;
 const WRONG_BURST_WINDOW_MS = 9000;
 const WRONG_BURST_THRESHOLD = 2;
@@ -76,6 +78,7 @@ export default function App() {
   const confettiClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const correctFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const incorrectFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const incorrectAnswerClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingAnswerCheckFrameRef = useRef<number | null>(null);
   const pendingAnswerCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingAnswerCheckTokenRef = useRef<number>(0);
@@ -182,6 +185,7 @@ export default function App() {
     if (confettiClearTimerRef.current) clearTimeout(confettiClearTimerRef.current);
     if (correctFeedbackTimerRef.current) clearTimeout(correctFeedbackTimerRef.current);
     if (incorrectFeedbackTimerRef.current) clearTimeout(incorrectFeedbackTimerRef.current);
+    if (incorrectAnswerClearTimerRef.current) clearTimeout(incorrectAnswerClearTimerRef.current);
     if (pendingAnswerCheckFrameRef.current !== null) cancelAnimationFrame(pendingAnswerCheckFrameRef.current);
     if (pendingAnswerCheckTimerRef.current) clearTimeout(pendingAnswerCheckTimerRef.current);
     if (questionRevealTimerRef.current) clearTimeout(questionRevealTimerRef.current);
@@ -292,6 +296,13 @@ export default function App() {
     answerLockedRef.current = false;
   };
 
+  const clearIncorrectAnswerResetTimer = () => {
+    if (incorrectAnswerClearTimerRef.current) {
+      clearTimeout(incorrectAnswerClearTimerRef.current);
+      incorrectAnswerClearTimerRef.current = null;
+    }
+  };
+
   const clearInputCooldown = () => {
     if (slowDownTimerRef.current) {
       clearTimeout(slowDownTimerRef.current);
@@ -352,8 +363,10 @@ export default function App() {
   const activateQ = (q: MathQuestion | null) => {
     clearPendingAnswerCheck();
     clearQuestionRevealTimer();
+    clearIncorrectAnswerResetTimer();
     clearAnswerReveal();
     clearSlowDownBanner();
+    answerLockedRef.current = false;
     hasRecordedWrongForQuestionRef.current = false;
     wrongBurstCountRef.current = 0;
     wrongBurstStartRef.current = 0;
@@ -386,6 +399,7 @@ export default function App() {
     clearPendingAnswerCheck();
     clearQuestionRevealTimer();
     clearCorrectAdvanceTimer();
+    clearIncorrectAnswerResetTimer();
     clearAnswerReveal();
     clearSlowDownBanner();
     isRoundActiveRef.current = false;
@@ -403,12 +417,14 @@ export default function App() {
     clearPendingAnswerCheck();
     clearQuestionRevealTimer();
     clearCorrectAdvanceTimer();
+    clearIncorrectAnswerResetTimer();
     clearAnswerReveal();
     clearSlowDownBanner();
     wrongBurstCountRef.current = 0;
     wrongBurstStartRef.current = 0;
     if (correctFeedbackTimerRef.current) { clearTimeout(correctFeedbackTimerRef.current); correctFeedbackTimerRef.current = null; }
     if (incorrectFeedbackTimerRef.current) { clearTimeout(incorrectFeedbackTimerRef.current); incorrectFeedbackTimerRef.current = null; }
+    clearIncorrectAnswerResetTimer();
     roundCompletedRef.current = false;
     answerLockedRef.current = false;
     const now = Date.now(); questionStartedAtRef.current = now;
@@ -461,7 +477,7 @@ export default function App() {
   };
 
   const exitPractice = () => {
-    clearCountdown(); clearPendingAnswerCheck(); clearQuestionRevealTimer(); clearCorrectAdvanceTimer(); clearAnswerReveal(); clearSlowDownBanner();
+    clearCountdown(); clearPendingAnswerCheck(); clearQuestionRevealTimer(); clearCorrectAdvanceTimer(); clearIncorrectAnswerResetTimer(); clearAnswerReveal(); clearSlowDownBanner();
     isRoundActiveRef.current = false; setIsRoundActive(false); setActiveStrategyRound(null);
     document.body.classList.remove("timed-quiz-active");
     document.documentElement.classList.remove("timed-quiz-active");
@@ -652,7 +668,28 @@ export default function App() {
     completeCorrectTransition(stats, questionId, REVEALED_ANSWER_HOLD_MS);
   };
 
-  const handleIncorrectAnswer = () => {
+  const showIncorrectAnswerThenReset = (submittedValue: string) => {
+    const q = currentQuestionRef.current;
+    if (!q) return;
+
+    const questionId = q.id;
+    clearIncorrectAnswerResetTimer();
+    answerLockedRef.current = true;
+    setAnswerValue(submittedValue);
+
+    incorrectAnswerClearTimerRef.current = setTimeout(() => {
+      incorrectAnswerClearTimerRef.current = null;
+      if (roundCompletedRef.current) { answerLockedRef.current = false; return; }
+      if (!currentQuestionRef.current || currentQuestionRef.current.id !== questionId) { answerLockedRef.current = false; return; }
+
+      setAnswerValue("");
+      setIsAnimatingIncorrect(false);
+      setIsShaking(false);
+      answerLockedRef.current = false;
+    }, INCORRECT_ANSWER_DISPLAY_MS);
+  };
+
+  const handleIncorrectAnswer = (submittedValue: string) => {
     if (!isRoundActiveRef.current || roundCompletedRef.current || !currentQuestionRef.current || answerLockedRef.current || isInputTemporarilyBlocked()) return;
 
     clearPendingAnswerCheck();
@@ -670,14 +707,17 @@ export default function App() {
     setIsAnimatingIncorrect(true);
     setIsAnimatingCorrect(false);
     setIsShaking(true);
-    setAnswerValue("");
+    showIncorrectAnswerThenReset(submittedValue);
 
     if (incorrectFeedbackTimerRef.current) clearTimeout(incorrectFeedbackTimerRef.current);
     incorrectFeedbackTimerRef.current = setTimeout(() => {
+      clearIncorrectAnswerResetTimer();
+      setAnswerValue("");
       setIsAnimatingIncorrect(false);
       setIsShaking(false);
+      answerLockedRef.current = false;
       incorrectFeedbackTimerRef.current = null;
-    }, 400);
+    }, INCORRECT_FEEDBACK_MS);
   };
 
   const checkRevealedAnswerValue = (rawValue: string, force = false) => {
@@ -713,14 +753,17 @@ export default function App() {
       setIsAnimatingIncorrect(true);
       setIsAnimatingCorrect(false);
       setIsShaking(true);
-      setAnswerValue("");
+      showIncorrectAnswerThenReset(raw);
 
       if (incorrectFeedbackTimerRef.current) clearTimeout(incorrectFeedbackTimerRef.current);
       incorrectFeedbackTimerRef.current = setTimeout(() => {
+        clearIncorrectAnswerResetTimer();
+        setAnswerValue("");
         setIsAnimatingIncorrect(false);
         setIsShaking(false);
+        answerLockedRef.current = false;
         incorrectFeedbackTimerRef.current = null;
-      }, 400);
+      }, INCORRECT_FEEDBACK_MS);
     }
   };
 
@@ -783,7 +826,7 @@ export default function App() {
     }
 
     if (parsed === expected) handleCorrectAnswer(raw);
-    else if (force || raw.length >= neededDigits) handleIncorrectAnswer();
+    else if (force || raw.length >= neededDigits) handleIncorrectAnswer(raw);
   };
 
   const queueAnswerInputCheck = (nextValue: string) => {

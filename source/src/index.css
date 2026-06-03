@@ -32,6 +32,29 @@
   font-variant-numeric: tabular-nums;
 }
 
+.timed-question-card {
+  position: relative;
+}
+
+.timed-review-badge {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.65rem;
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 999px;
+  background: rgba(219, 234, 254, 0.78);
+  color: rgba(30, 64, 175, 0.78);
+  padding: 0.15rem 0.45rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
 .timed-feedback-zone {
   height: clamp(3.55rem, 7vh, 4.2rem);
   min-height: clamp(3.55rem, 7vh, 4.2rem);
@@ -165,6 +188,12 @@ body.timed-quiz-active input {
     align-items: center;
     padding-top: 0.75rem !important;
     padding-bottom: 0.75rem !important;
+  }
+  .timed-review-badge {
+    top: 0.45rem;
+    right: 0.5rem;
+    padding: 0.12rem 0.36rem;
+    font-size: 0.58rem;
   }
   .timed-question-card h4 {
     font-size: clamp(3rem, 16vw, 4.8rem) !important;

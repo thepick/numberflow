@@ -128,6 +128,7 @@ export default function App() {
   const [showSlowDown, setShowSlowDown] = useState<boolean>(false);
   const [isInputCooldown, setIsInputCooldown] = useState<boolean>(false);
   const [answerReveal, setAnswerReveal] = useState<{ questionId: string; text: string } | null>(null);
+  const [currentQuestionIsReview, setCurrentQuestionIsReview] = useState<boolean>(false);
 
   // State — UI
   const [isAnimatingCorrect, setIsAnimatingCorrect] = useState<boolean>(false);
@@ -242,8 +243,15 @@ export default function App() {
     return { currentFacts, practicePool: mergeUniqueQuestions(currentFacts, priorityReview) };
   };
 
+  const getCurrentStrategyFactIds = () => new Set(currentStrategyFactsRef.current.map((f) => f.id));
+
+  const isReviewQuestion = (q: MathQuestion | null): boolean => {
+    if (!q || currentStrategyFactsRef.current.length === 0) return false;
+    return !getCurrentStrategyFactIds().has(q.id);
+  };
+
   const getReviewFacts = () => {
-    const ids = new Set(currentStrategyFactsRef.current.map((f) => f.id));
+    const ids = getCurrentStrategyFactIds();
     return questionPoolRef.current.filter((f) => !ids.has(f.id));
   };
 
@@ -374,7 +382,7 @@ export default function App() {
     hasRecordedWrongForQuestionRef.current = false;
     wrongBurstCountRef.current = 0;
     wrongBurstStartRef.current = 0;
-    currentQuestionRef.current = q; setCurrentQuestion(q);
+    currentQuestionRef.current = q; setCurrentQuestion(q); setCurrentQuestionIsReview(isReviewQuestion(q));
     const now = Date.now(); questionStartedAtRef.current = now;
     setIsAnimatingCorrect(false);
     setIsAnimatingIncorrect(false);
@@ -1287,6 +1295,9 @@ export default function App() {
 
                       {/* Question */}
                       <div className="timed-question-card bg-blue-50/50 rounded-2xl border-2 border-blue-100 p-6 text-center">
+                        {currentQuestionIsReview && (
+                          <span className="timed-review-badge" aria-label="Review question">Review</span>
+                        )}
                         <h4 className="text-5xl md:text-7xl font-black font-mono text-blue-950 tracking-tight">
                           {currentQuestion?.question || "..."}
                         </h4>
@@ -1404,6 +1415,18 @@ export default function App() {
                   )}
 
                   <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 justify-center">
+                    <button
+                      onClick={exitPractice}
+                      className="bg-white hover:bg-slate-50 text-slate-700 font-bold py-2.5 px-6 rounded-xl text-sm transition border-2 border-slate-200 cursor-pointer"
+                    >
+                      Back to Map
+                    </button>
+                    <button
+                      onClick={() => activeStrategyRound && handleStartPractice(activeStrategyRound)}
+                      className="bg-white hover:bg-slate-50 text-slate-700 font-bold py-2.5 px-6 rounded-xl text-sm transition border-2 border-slate-200 cursor-pointer"
+                    >
+                      Play Again
+                    </button>
                     {canStartNextLesson && (
                       <button
                         onClick={handleStartNextLesson}
@@ -1412,18 +1435,6 @@ export default function App() {
                         Next Lesson
                       </button>
                     )}
-                    <button
-                      onClick={() => activeStrategyRound && handleStartPractice(activeStrategyRound)}
-                      className="bg-white hover:bg-slate-50 text-slate-700 font-bold py-2.5 px-6 rounded-xl text-sm transition border-2 border-slate-200 cursor-pointer"
-                    >
-                      Play Again
-                    </button>
-                    <button
-                      onClick={exitPractice}
-                      className="bg-white hover:bg-slate-50 text-slate-700 font-bold py-2.5 px-6 rounded-xl text-sm transition border-2 border-slate-200 cursor-pointer"
-                    >
-                      Back to Map
-                    </button>
                   </div>
                 </div>
               )}

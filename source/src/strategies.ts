@@ -244,7 +244,6 @@ function buildSingleStrategyQuestionPool(strategyCode: string): MathQuestion[] {
         const hint = `${part} and ${missing} are partners that make 10.`;
         list.push(makeQuestion({ strategyCode, question: `${part} + ? = 10`, answer: missing, hint, family: "make-10-missing-part", difficulty: 1 }));
         if (part !== missing) list.push(makeQuestion({ strategyCode, question: `? + ${part} = 10`, answer: missing, hint, family: "make-10-missing-part", difficulty: 1 }));
-        list.push(makeQuestion({ strategyCode, question: `10 = ${part} + ?`, answer: missing, hint, family: "make-10-equation", difficulty: 1 }));
       });
       range(1, 5).forEach((left) => {
         const right = 10 - left;
@@ -308,6 +307,7 @@ function buildSingleStrategyQuestionPool(strategyCode: string): MathQuestion[] {
         list.push(makeQuestion({ strategyCode, question: `${a} + ${b}`, answer: 10, hint: `${a}, ${b}, and 10 are in the same fact family.`, family: "family-10-add", difficulty: 2 }));
         list.push(makeQuestion({ strategyCode, question: `10 - ${a}`, answer: b, hint: `${a}, ${b}, and 10 are in the same fact family.`, family: "family-10-subtract", difficulty: 2 }));
         list.push(makeQuestion({ strategyCode, question: `10 - ${b}`, answer: a, hint: `${a}, ${b}, and 10 are in the same fact family.`, family: "family-10-subtract", difficulty: 2 }));
+        list.push(makeQuestion({ strategyCode, question: `10 = ${a} + ?`, answer: b, hint: `${a}, ${b}, and 10 are in the same fact family.`, family: "family-10-reverse-equation", difficulty: 3 }));
       }); break;
     }
     case "fact-family-20": {
@@ -318,6 +318,7 @@ function buildSingleStrategyQuestionPool(strategyCode: string): MathQuestion[] {
             list.push(makeQuestion({ strategyCode, question: `${a} + ${b}`, answer: total, hint: `${a}, ${b}, and ${total} are in the same fact family.`, family: "family-20-add", difficulty: 3 }));
             list.push(makeQuestion({ strategyCode, question: `${total} - ${a}`, answer: b, hint: `Think of the related addition fact ${a} + ${b} = ${total}.`, family: "family-20-subtract", difficulty: 3 }));
             list.push(makeQuestion({ strategyCode, question: `${total} - ${b}`, answer: a, hint: `Think of the related addition fact ${a} + ${b} = ${total}.`, family: "family-20-subtract", difficulty: 3 }));
+            list.push(makeQuestion({ strategyCode, question: `${total} = ${a} + ?`, answer: b, hint: `Think of the related addition fact ${a} + ${b} = ${total}.`, family: "family-20-reverse-equation", difficulty: 4 }));
           }
         });
       }); break;

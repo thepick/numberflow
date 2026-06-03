@@ -228,10 +228,14 @@ export default function App() {
 
   // ─── Practice Engine ──────────────────────────────────
 
-  const buildPool = (strategy: Strategy) => {
+  const buildPool = (
+    strategy: Strategy,
+    viewedOverride: number[] = viewedStrategyIds,
+    masteredOverride: number[] = masteredStrategyIds,
+  ) => {
     const currentFacts = generateQuestionPoolForStrategy(strategy.code);
     const earlier = STRATEGIES.filter((s) =>
-      s.id < strategy.id && (viewedStrategyIds.includes(s.id) || masteredStrategyIds.includes(s.id)));
+      s.id < strategy.id && (viewedOverride.includes(s.id) || masteredOverride.includes(s.id)));
     const prevFacts = mergeUniqueQuestions(...earlier.map((s) => generateQuestionPoolForStrategy(s.code)));
     const reviewLimit = Math.max(3, Math.min(10, Math.round(currentFacts.length * 0.16)));
     const priorityReview = getPriorityReviewQuestions(prevFacts, factStatsRef.current, speedTarget, reviewLimit);
@@ -457,10 +461,14 @@ export default function App() {
     });
   };
 
-  const handleStartPractice = (strategy: Strategy) => {
+  const handleStartPractice = (
+    strategy: Strategy,
+    viewedOverride: number[] = viewedStrategyIds,
+    masteredOverride: number[] = masteredStrategyIds,
+  ) => {
     clearCountdown(); setShowLessonModal(null); setActiveStrategyRound(strategy);
     setLastRoundStarResult(null);
-    const { currentFacts, practicePool } = buildPool(strategy);
+    const { currentFacts, practicePool } = buildPool(strategy, viewedOverride, masteredOverride);
     currentStrategyFactsRef.current = currentFacts; questionPoolRef.current = practicePool;
     activateQ(chooseNextFact(currentFacts, factStatsRef.current, speedTarget));
     setCurrentQuestionIdx(0); setUserAnswer(""); userAnswerRef.current = ""; setShowHint(false); setRoundCompleted(false);
@@ -931,6 +939,40 @@ export default function App() {
   const starProgressText = `${stars}/${STRATEGIES.length * STARS_PER_STRATEGY}`;
   const roundPassTarget = Math.max(6, Math.round(speedTarget * 0.6));
   const activeRoundBestStars = activeStrategyRound ? getStrategyStarCount(activeStrategyRound.id) : 0;
+  const roundPassed = roundScore >= roundPassTarget;
+  const nextStrategy = activeStrategyRound
+    ? STRATEGIES.find((strategy) => strategy.id === activeStrategyRound.id + 1) || null
+    : null;
+  const canStartNextLesson = !!activeStrategyRound && !!nextStrategy && roundPassed;
+
+  const handleStartNextLesson = () => {
+    if (!activeStrategyRound || !nextStrategy || !roundPassed) return;
+
+    const currentId = activeStrategyRound.id;
+    const nextViewed = viewedStrategyIds.includes(nextStrategy.id)
+      ? viewedStrategyIds
+      : [...viewedStrategyIds, nextStrategy.id];
+    const nextMastered = masteredStrategyIds.includes(currentId)
+      ? masteredStrategyIds
+      : [...masteredStrategyIds, currentId];
+    const bestStarsForCurrent = Math.max(
+      clampStars(strategyStars[currentId] || 0),
+      getStarsForScore(roundScore, speedTarget),
+    );
+    const nextStars = { ...strategyStars, [currentId]: bestStarsForCurrent };
+    const nextStreaks = { ...bestStreaks, [currentId]: Math.max(bestStreaks[currentId] || 0, bestStreakRound) };
+    const nextSpeeds = { ...bestSpeeds, [currentId]: Math.max(bestSpeeds[currentId] || 0, roundScore) };
+
+    setViewedStrategyIds(nextViewed);
+    setMasteredStrategyIds(nextMastered);
+    setStrategyStars(nextStars);
+    setStars(countStars(nextStars));
+    setBestStreaks(nextStreaks);
+    setBestSpeeds(nextSpeeds);
+    setCurrentStageId(nextStrategy.stageId);
+    saveProgress(nextViewed, nextMastered, speedTarget, nextStreaks, nextSpeeds, factStatsRef.current, nextStars);
+    handleStartPractice(nextStrategy, nextViewed, nextMastered);
+  };
 
   const renderStars = (count: number, cls = "w-4 h-4", total = STARS_PER_STRATEGY) =>
     Array.from({ length: total }, (_, i) => (
@@ -1331,9 +1373,9 @@ export default function App() {
               ) : (
                 /* Round Results */
                 <div className="text-center py-6 space-y-4">
-                  <span className="text-4xl">{roundScore >= roundPassTarget ? "🎉" : "💪"}</span>
+                  <span className="text-4xl">{roundPassed ? "🎉" : "💪"}</span>
                   <h3 className="text-xl md:text-2xl font-display font-black text-blue-950">
-                    {roundScore >= roundPassTarget ? "Great job!" : "Nice try!"}
+                    {roundPassed ? "Great job!" : "Nice try!"}
                   </h3>
 
                   <div className="flex items-center justify-center gap-3">
@@ -1357,14 +1399,22 @@ export default function App() {
                     </div>
                   )}
 
-                  {roundScore >= roundPassTarget && (
-                    <p className="text-sm font-bold text-emerald-700">Lesson passed! {activeStrategyRound && activeStrategyRound.id < STRATEGIES.length ? "Next lesson unlocked!" : ""}</p>
+                  {roundPassed && (
+                    <p className="text-sm font-bold text-emerald-700">Lesson passed! {nextStrategy ? "Next lesson unlocked!" : ""}</p>
                   )}
 
-                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                  <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 justify-center">
+                    {canStartNextLesson && (
+                      <button
+                        onClick={handleStartNextLesson}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white font-black py-2.5 px-6 rounded-xl text-sm transition border-2 border-emerald-600 cursor-pointer shadow-sm"
+                      >
+                        Next Lesson
+                      </button>
+                    )}
                     <button
                       onClick={() => activeStrategyRound && handleStartPractice(activeStrategyRound)}
-                      className="bg-emerald-500 hover:bg-emerald-600 text-white font-black py-2.5 px-6 rounded-xl text-sm transition border-2 border-emerald-600 cursor-pointer shadow-sm"
+                      className="bg-white hover:bg-slate-50 text-slate-700 font-bold py-2.5 px-6 rounded-xl text-sm transition border-2 border-slate-200 cursor-pointer"
                     >
                       Play Again
                     </button>

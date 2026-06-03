@@ -565,7 +565,6 @@ export default function App() {
         inputCooldownQuestionIdRef.current = null;
         setIsInputCooldown(false);
         setShowSlowDown(false);
-        if (inputRef.current) inputRef.current.focus();
       }
     }, SLOW_DOWN_LOCK_MS);
   };
@@ -835,6 +834,12 @@ export default function App() {
     return value.replace(/\D/g, "").slice(0, limit);
   };
 
+  const triggerKeypadHaptic = () => {
+    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+      navigator.vibrate(12);
+    }
+  };
+
   const handleNumClick = (val: string) => {
     if (!isRoundActiveRef.current || roundCompletedRef.current || answerLockedRef.current || isInputTemporarilyBlocked()) return;
 
@@ -851,14 +856,14 @@ export default function App() {
       next = prev + val;
     }
 
+    triggerKeypadHaptic();
     setAnswerValue(next);
     queueAnswerInputCheck(next);
-
-    if (inputRef.current) inputRef.current.focus();
   };
 
   const handleSubmit = () => {
     if (isInputTemporarilyBlocked()) return;
+    triggerKeypadHaptic();
     checkAnswerValue(userAnswerRef.current, true);
   };
 
@@ -1204,20 +1209,15 @@ export default function App() {
                           <input
                             ref={inputRef}
                             type="text"
-                            inputMode="numeric"
+                            inputMode="none"
                             value={userAnswer}
-                            onChange={(e) => {
-                              if (!isRoundActiveRef.current || roundCompletedRef.current || answerLockedRef.current || isInputTemporarilyBlocked()) return;
-                              const next = sanitizeAnswerInput(e.target.value);
-                              setAnswerValue(next);
-                              queueAnswerInputCheck(next);
-                            }}
+                            readOnly
+                            aria-label="Timed round answer"
                             className={`timed-answer-input w-40 text-center text-3xl md:text-4xl font-mono font-black bg-transparent border-b-4 outline-none transition-colors py-2 ${
                               isAnimatingCorrect ? "answer-glow-good border-emerald-400 text-emerald-600" :
                               isAnimatingIncorrect ? "answer-glow-bad border-red-400 text-red-500" :
-                              "border-blue-300 text-blue-800 focus:border-blue-500"
+                              "border-blue-300 text-blue-800"
                             } ${isShaking ? "animate-pulse" : ""}`}
-                            autoFocus
                             autoComplete="off"
                             disabled={isInputCooldown}
                           />
